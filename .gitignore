@@ -34,6 +34,7 @@ backup/
 # 凭据与签名材料（严禁入库）
 .env
 .env.*
+academic.local.json
 *.p12
 *.pfx
 *.mobileprovision
