@@ -1,0 +1,45 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Android / iOS 本地产物
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+
+# 分发产物与本机数据备份（含个人课表，不提交）
+dist/
+backup/
+
+# 凭据与签名材料（严禁入库）
+.env
+.env.*
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+GoogleService-Info.plist
+
+# 系统文件
+.DS_Store
+Thumbs.db

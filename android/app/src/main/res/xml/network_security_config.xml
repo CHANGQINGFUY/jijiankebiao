@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  教务系统证书信任配置。
+  部分教务系统的证书由「Xcc Trust OV SSL CA」签发（根为 Certum Trusted Network CA），
+  但服务器没有下发中间证书，Android WebView 不会自动补链，于是概率性出现
+  ERR_CERT_AUTHORITY_INVALID / 无法访问。
+  这里把中间证书作为信任锚点，并对校园网自建 CA 放开用户证书，
+  避免写死具体学校域名。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <!-- 允许用户自行安装的校园网 CA（如学校做了 HTTPS 拦截）。 -->
+            <certificates src="user" />
+            <!-- 缺失的中间证书。 -->
+            <certificates src="@raw/xcc_ov_ca" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

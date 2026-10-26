@@ -1,0 +1,27 @@
+name: schedule_app
+description: 极简课表 App，支持学生与老师两种视图，课表数据全部保存在本地。
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  file_picker: ^13.1.0
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^11.2.0
+  justkawal_excel_updated: ^5.0.0
+  path_provider: ^2.1.6
+  shared_preferences: ^2.5.3
+  webview_flutter: ^4.14.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/academic_schools.json

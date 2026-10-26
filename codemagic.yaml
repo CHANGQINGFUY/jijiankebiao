@@ -1,0 +1,36 @@
+# 极简课表 iOS 适配编译验证
+# 目标：在云端 macOS 上完成「未签名」编译，验证工程结构与插件兼容性。
+# 说明：不涉及 Apple 证书、描述文件、App Store Connect 与 TestFlight。
+
+workflows:
+  ios-adapt:
+    name: iOS Adapt Build (unsigned)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      # 与本机一致；若该版本在 Codemagic 不可用，可改为 stable
+      flutter: 3.47.7
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Clean
+        script: flutter clean
+      - name: Flutter dependencies
+        script: flutter pub get
+      - name: CocoaPods install
+        script: |
+          cd ios
+          pod install
+      - name: Build iOS (release, no codesign)
+        script: flutter build ios --release --no-codesign
+      - name: Package unsigned IPA
+        script: |
+          cd build/ios/iphoneos
+          rm -rf Payload app-unsigned.ipa
+          mkdir Payload
+          cp -R Runner.app Payload/
+          zip -qry app-unsigned.ipa Payload
+    artifacts:
+      - build/ios/iphoneos/Runner.app
+      - build/ios/iphoneos/app-unsigned.ipa
+      - build/ios/iphoneos/Runner.app.dSYM
