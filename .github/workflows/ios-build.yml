@@ -34,10 +34,13 @@ jobs:
       - name: Xcode version
         run: xcodebuild -version
 
-      - name: Install iOS 18 runtime (for storyboard compilation)
+      - name: Install iOS 18 runtime (for storyboard + assets compilation)
         run: |
           sudo xcodebuild -downloadPlatform iOS 2>&1 || true
-          xcrun simctl runtime list 2>/dev/null | head -5
+          # Also ensure iOS 18.0 simulator runtime is present (actool needs it)
+          xcrun simctl runtime list 2>/dev/null
+          # Try installing iOS 18.0 specifically
+          sudo xcodebuild -downloadAllPlatforms 2>&1 || true
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
