@@ -56,6 +56,9 @@ jobs:
           rm -rf Pods Podfile.lock
           pod install --repo-update
 
+      - name: Run flutter build to set up SPM integration (may fail on Team check)
+        run: flutter build ios --debug --no-codesign 2>&1 | tail -20 || echo "flutter build failed but SPM should be configured"
+
       - name: Fix xcconfig include for Pods
         working-directory: ios
         run: |
