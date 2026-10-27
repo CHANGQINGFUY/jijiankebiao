@@ -20,43 +20,31 @@ concurrency:
 jobs:
   build:
     name: Build unsigned IPA
-    runs-on: macos-15
+    runs-on: macos-14
     timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Xcode 16
+      - name: Setup Xcode 15.4 (stable, no iOS 18 runtime needed)
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.0'
+          xcode-version: '15.4'
 
       - name: Xcode version + disk check
         run: |
           xcodebuild -version
-          echo "=== Disk before ==="
-          df -h /
-          echo "=== Homebrew cleanup ==="
-          brew cleanup -s 2>/dev/null || true
-          rm -rf ~/Library/Caches/Homebrew 2>/dev/null || true
-          echo "=== /tmp cleanup ==="
-          rm -rf /tmp/* 2>/dev/null || true
+          echo "=== SDKs ==="
+          xcrun --sdk iphoneos --show-sdk-version 2>/dev/null
+          echo "=== Disk ==="
           df -h /
 
-      - name: Install ONLY iOS 18 simulator runtime
-        run: |
-          # Download the iOS 18 simulator runtime (needed by storyboard + actool)
-          sudo xcodebuild -downloadPlatform iOS 2>&1 | tail -20
-          echo "=== Disk after runtime ==="
-          df -h /
-          xcrun simctl runtime list 2>/dev/null | head -10
-
-      - name: Setup Flutter (with cache disabled to save space)
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.47.7
           channel: stable
-          cache: false
+          cache: true
 
       - name: Flutter dependencies
         run: flutter pub get
@@ -81,8 +69,6 @@ jobs:
       - name: xcodebuild Release iOS (unsigned)
         working-directory: ios
         run: |
-          echo "=== Disk before build ==="
-          df -h /
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
