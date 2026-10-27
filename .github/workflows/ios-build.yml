@@ -1,0 +1,60 @@
+# 极简课表 iOS 构建（未签名 IPA）
+# 在 GitHub 云上 macOS runner 构建，产物可直接下载安装到真机。
+
+name: iOS Build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ios/**
+      - lib/**
+      - pubspec.yaml
+      - pubspec.lock
+      - '!**/*.md'
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.7
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install
+
+      - name: Build iOS (release, no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned IPA
+        working-directory: build/ios/iphoneos
+        run: |
+          rm -rf Payload app-unsigned.ipa
+          mkdir Payload
+          cp -R Runner.app Payload/
+          zip -qry app-unsigned.ipa Payload
+          ls -lh app-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned-ios
+          path: build/ios/iphoneos/app-unsigned.ipa
+          retention-days: 30
