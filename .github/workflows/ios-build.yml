@@ -36,6 +36,9 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
+      - name: Flutter dependencies
+        run: flutter pub get
+
       - name: Setup CocoaPods
         run: |
           brew install cocoapods 2>/dev/null || brew upgrade cocoapods || true
