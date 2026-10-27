@@ -56,19 +56,32 @@ jobs:
         working-directory: ios
         run: |
           rm -rf Pods Podfile.lock
-          pod install --repo-update --verbose
+          pod install --repo-update
 
-      - name: Debug Pods state
+      - name: Fix xcconfig include for Pods
         working-directory: ios
         run: |
-          echo "=== Pods dir ==="
-          ls -la Pods/ 2>/dev/null | head -10
-          echo "=== Pods xcconfig ==="
-          cat "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig" 2>/dev/null
-          echo "=== Runner Debug.xcconfig ==="
+          # CocoaPods warns that Pods-Runner xcconfig is not included in Flutter's xcconfig
+          # We need to add the include line before Flutter's own include
+          echo "=== Before fix ==="
           cat Flutter/Debug.xcconfig
-          echo "=== workspace exists ==="
-          ls -la Runner.xcworkspace/ 2>/dev/null
+          echo "---"
+          cat Flutter/Release.xcconfig
+          echo ""
+          
+          # Prepend Pods-Runner include
+          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"' > /tmp/debug_new.xcconfig
+          cat Flutter/Debug.xcconfig >> /tmp/debug_new.xcconfig
+          mv /tmp/debug_new.xcconfig Flutter/Debug.xcconfig
+          
+          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"' > /tmp/release_new.xcconfig
+          cat Flutter/Release.xcconfig >> /tmp/release_new.xcconfig
+          mv /tmp/release_new.xcconfig Flutter/Release.xcconfig
+          
+          echo "=== After fix ==="
+          cat Flutter/Debug.xcconfig
+          echo "---"
+          cat Flutter/Release.xcconfig
 
       - name: Build unsigned IPA via xcodebuild
         working-directory: ios
@@ -84,19 +97,16 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE="" \
-            build 2>&1 | tee /tmp/xcodebuild.log
-          echo "EXIT_CODE=$?"
-          echo "=== Last 30 lines of xcodebuild log ==="
-          tail -30 /tmp/xcodebuild.log
+            build
 
       - name: Package unsigned IPA
         run: |
           IOS_PATH="$(pwd)/ios"
-          echo "Searching for Runner.app under $IOS_PATH/build..."
+          echo "Searching for Runner.app..."
           find "$IOS_PATH/build" -name "Runner.app" -type d
           APP_PATH=$(find "$IOS_PATH/build" -path "*/Release-iphoneos/Runner.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
-            echo "❌ No Runner.app found in build output"
+            echo "❌ No Runner.app found"
             exit 1
           fi
           echo "✅ Found: $APP_PATH"
@@ -112,7 +122,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-unsigned-ios
-          path: |
-            ios/build/Release-iphoneos/app-unsigned.ipa
-            ios/build/Build/Products/Release-iphoneos/app-unsigned.ipa
+          path: ios/build/Release-iphoneos/app-unsigned.ipa
           retention-days: 30
