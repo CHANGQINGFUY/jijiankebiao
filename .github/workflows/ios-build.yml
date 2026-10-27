@@ -47,21 +47,6 @@ jobs:
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Patch Xcode project for unsigned build
-        run: |
-          P="ios/Runner.xcodeproj/project.pbxproj"
-          echo "Patching $P..."
-          # Remove DEVELOPMENT_TEAM references entirely
-          sed -i '' '/DEVELOPMENT_TEAM/d' "$P"
-          # Set CODE_SIGN_STYLE to Manual everywhere
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$P"
-          # Disable code signing
-          sed -i '' 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' "$P"
-          sed -i '' 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' "$P"
-          # Add CODE_SIGNING_ALLOWED = NO after CODE_SIGN_STYLE = Manual lines that don't have it
-          grep -n "CODE_SIGN_STYLE = Manual" "$P"
-          echo "Patch done."
-
       - name: Setup CocoaPods
         run: |
           brew install cocoapods 2>/dev/null || brew upgrade cocoapods || true
@@ -69,14 +54,54 @@ jobs:
 
       - name: Install CocoaPods dependencies
         working-directory: ios
-        run: pod install --repo-update
+        run: |
+          rm -rf Pods Podfile.lock
+          pod install --repo-update --verbose
 
-      - name: Build iOS (release, no codesign)
-        run: flutter build ios --release --no-codesign
+      - name: Debug Pods state
+        working-directory: ios
+        run: |
+          echo "=== Pods dir ==="
+          ls -la Pods/ 2>/dev/null | head -10
+          echo "=== Pods xcconfig ==="
+          cat "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig" 2>/dev/null
+          echo "=== Runner Debug.xcconfig ==="
+          cat Flutter/Debug.xcconfig
+          echo "=== workspace exists ==="
+          ls -la Runner.xcworkspace/ 2>/dev/null
+
+      - name: Build unsigned IPA via xcodebuild
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE="" \
+            build 2>&1 | tee /tmp/xcodebuild.log
+          echo "EXIT_CODE=$?"
+          echo "=== Last 30 lines of xcodebuild log ==="
+          tail -30 /tmp/xcodebuild.log
 
       - name: Package unsigned IPA
-        working-directory: build/ios/iphoneos
         run: |
+          IOS_PATH="$(pwd)/ios"
+          echo "Searching for Runner.app under $IOS_PATH/build..."
+          find "$IOS_PATH/build" -name "Runner.app" -type d
+          APP_PATH=$(find "$IOS_PATH/build" -path "*/Release-iphoneos/Runner.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ No Runner.app found in build output"
+            exit 1
+          fi
+          echo "✅ Found: $APP_PATH"
+          APP_DIR=$(dirname "$APP_PATH")
+          cd "$APP_DIR"
           rm -rf Payload app-unsigned.ipa
           mkdir Payload
           cp -R Runner.app Payload/
@@ -87,5 +112,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-unsigned-ios
-          path: build/ios/iphoneos/app-unsigned.ipa
+          path: |
+            ios/build/Release-iphoneos/app-unsigned.ipa
+            ios/build/Build/Products/Release-iphoneos/app-unsigned.ipa
           retention-days: 30
