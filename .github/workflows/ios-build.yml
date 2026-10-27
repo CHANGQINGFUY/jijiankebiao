@@ -26,18 +26,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Xcode 15.4 (stable, no iOS 18 runtime needed)
+      - name: Setup Xcode 15.4
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: '15.4'
 
-      - name: Xcode version + disk check
-        run: |
-          xcodebuild -version
-          echo "=== SDKs ==="
-          xcrun --sdk iphoneos --show-sdk-version 2>/dev/null
-          echo "=== Disk ==="
-          df -h /
+      - name: Xcode version
+        run: xcodebuild -version
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -47,29 +42,24 @@ jobs:
           cache: true
 
       - name: Flutter dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter clean
 
-      - name: Setup CocoaPods + install pods
+      - name: Flutter build to set up SPM (Team check will fail but SPM is configured)
+        run: flutter build ios --debug --no-codesign 2>&1 | tail -30 || echo "flutter build failed, checking workspace state..."
+
+      - name: Check workspace state after flutter build
         working-directory: ios
         run: |
-          brew install cocoapods 2>/dev/null || brew upgrade cocoapods || true
-          rm -rf Pods Podfile.lock
-          pod install --repo-update
+          echo "=== xcworkspace ==="
+          cat Runner.xcworkspace/contents.xcworkspacedata 2>/dev/null
+          echo "=== Package.resolved ==="
+          find . -name "Package.resolved" -exec echo "Found: {}" \;
+          echo "=== Swift packages in pbxproj ==="
+          grep -c "XCRemoteSwiftPackageReference" Runner.xcodeproj/project.pbxproj 2>/dev/null || echo "0"
 
-      - name: Run flutter build to set up SPM integration (may fail on Team check)
-        run: flutter build ios --debug --no-codesign 2>&1 | tail -20 || echo "flutter build failed but SPM should be configured"
-
-      - name: Fix xcconfig include for Pods
-        working-directory: ios
-        run: |
-          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"' > /tmp/dbg.xcconfig
-          cat Flutter/Debug.xcconfig >> /tmp/dbg.xcconfig
-          mv /tmp/dbg.xcconfig Flutter/Debug.xcconfig
-          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"' > /tmp/rel.xcconfig
-          cat Flutter/Release.xcconfig >> /tmp/rel.xcconfig
-          mv /tmp/rel.xcconfig Flutter/Release.xcconfig
-
-      - name: xcodebuild Release iOS (unsigned)
+      - name: xcodebuild Release iOS (unsigned, skip code signing)
         working-directory: ios
         run: |
           xcodebuild \
