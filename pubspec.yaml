@@ -25,3 +25,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/academic_schools.json
+
+dependency_overrides:
+  shared_preferences_foundation: 2.3.0
