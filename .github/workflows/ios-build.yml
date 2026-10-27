@@ -32,7 +32,15 @@ jobs:
           xcode-version: '16.0'
 
       - name: Xcode version
-        run: xcodebuild -version
+        run: |
+          xcodebuild -version
+          echo "=== Available SDKs ==="
+          xcodebuild -showsdks | head -20
+
+      - name: Install iOS 18 simulator runtime
+        run: |
+          sudo xcodebuild -downloadPlatform iOS 2>&1 || true
+          xcrun simctl runtime list 2>/dev/null || true
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
