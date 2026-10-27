@@ -55,23 +55,45 @@ jobs:
 
       - name: Install CocoaPods dependencies
         working-directory: ios
-        run: pod install --repo-update --verbose
+        run: pod install --repo-update
 
-      - name: Build iOS (release, no codesign)
-        run: flutter build ios --release --no-codesign
+      - name: Build unsigned IPA via xcodebuild
+        run: |
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE="" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            build
 
       - name: Package unsigned IPA
-        working-directory: build/ios/iphoneos
         run: |
+          APP_PATH="build/ios/Build/Products/Release-iphoneos/Runner.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "❌ Runner.app not found at $APP_PATH"
+            echo "Available products:"
+            find build/ios/Build -name "*.app" 2>/dev/null || echo "no .app found"
+            exit 1
+          fi
+          cd build/ios/Build/Products/Release-iphoneos
           rm -rf Payload app-unsigned.ipa
           mkdir Payload
           cp -R Runner.app Payload/
           zip -qry app-unsigned.ipa Payload
           ls -lh app-unsigned.ipa
+          pwd
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-unsigned-ios
-          path: build/ios/iphoneos/app-unsigned.ipa
+          path: build/ios/Build/Products/Release-iphoneos/app-unsigned.ipa
           retention-days: 30
