@@ -31,13 +31,13 @@ jobs:
         with:
           xcode-version: '16.0'
 
-      - name: Xcode version + available platforms
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Install iOS 18 runtime (for storyboard compilation)
         run: |
-          xcodebuild -version
-          echo "=== Platforms ==="
-          ls /Applications/Xcode_16.app/Contents/Developer/Platforms/ 2>/dev/null
-          echo "=== iOS SDKs ==="
-          ls /Applications/Xcode_16.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/ 2>/dev/null || true
+          sudo xcodebuild -downloadPlatform iOS 2>&1 || true
+          xcrun simctl runtime list 2>/dev/null | head -5
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -46,43 +46,34 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Flutter version
-        run: flutter --version
-
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Setup CocoaPods
-        run: |
-          brew install cocoapods 2>/dev/null || brew upgrade cocoapods || true
-          pod --version
-
-      - name: Install CocoaPods dependencies
+      - name: Setup CocoaPods + install pods
         working-directory: ios
         run: |
+          brew install cocoapods 2>/dev/null || brew upgrade cocoapods || true
           rm -rf Pods Podfile.lock
           pod install --repo-update
 
       - name: Fix xcconfig include for Pods
         working-directory: ios
         run: |
-          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"' > /tmp/debug_new.xcconfig
-          cat Flutter/Debug.xcconfig >> /tmp/debug_new.xcconfig
-          mv /tmp/debug_new.xcconfig Flutter/Debug.xcconfig
-          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"' > /tmp/release_new.xcconfig
-          cat Flutter/Release.xcconfig >> /tmp/release_new.xcconfig
-          mv /tmp/release_new.xcconfig Flutter/Release.xcconfig
+          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"' > /tmp/dbg.xcconfig
+          cat Flutter/Debug.xcconfig >> /tmp/dbg.xcconfig
+          mv /tmp/dbg.xcconfig Flutter/Debug.xcconfig
+          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"' > /tmp/rel.xcconfig
+          cat Flutter/Release.xcconfig >> /tmp/rel.xcconfig
+          mv /tmp/rel.xcconfig Flutter/Release.xcconfig
 
-      - name: Build with xcodebuild (auto-detect everything)
+      - name: xcodebuild Release iOS (unsigned)
         working-directory: ios
         run: |
-          echo "=== Destinations ==="
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -showdestinations 2>&1 | head -20
-          echo "=== Build ==="
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
+            -destination 'id=dvtdevice-DVTiPhonePlaceholder-iphoneos:placeholder' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -91,29 +82,24 @@ jobs:
             build
           echo "EXIT=$?"
 
-      - name: Find and package IPA
+      - name: Package unsigned IPA
         run: |
-          echo "=== Searching for Runner.app ==="
-          find ios/build -name "Runner.app" -type d 2>/dev/null
-          # Also check default DerivedData
-          find ~/Library/Developer/Xcode/DerivedData -path "*/Release-iphoneos/Runner.app" -type d 2>/dev/null | head -3
           APP_PATH=$(find ios/build -path "*/Release-iphoneos/Runner.app" -type d 2>/dev/null | head -1)
           if [ -z "$APP_PATH" ]; then
             APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Release-iphoneos/Runner.app" -type d 2>/dev/null | head -1)
           fi
-          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-            echo "❌ No Runner.app found"
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ No Runner.app"
+            find ios/build -name "Runner.app" 2>/dev/null
             exit 1
           fi
-          echo "✅ Found: $APP_PATH"
-          APP_DIR=$(dirname "$APP_PATH")
-          cd "$APP_DIR"
+          echo "✅ $APP_PATH"
+          cd "$(dirname $APP_PATH)"
           rm -rf Payload app-unsigned.ipa
           mkdir Payload
           cp -R Runner.app Payload/
           zip -qry app-unsigned.ipa Payload
           ls -lh app-unsigned.ipa
-          pwd
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
