@@ -36,9 +36,15 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
+      - name: Setup CocoaPods
+        run: |
+          brew install cocoapods 2>/dev/null || brew upgrade cocoapods || true
+          pod --version
+          pod setup 2>/dev/null || true
+
       - name: Install CocoaPods dependencies
         working-directory: ios
-        run: pod install
+        run: pod install --repo-update --verbose
 
       - name: Build iOS (release, no codesign)
         run: flutter build ios --release --no-codesign
