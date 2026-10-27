@@ -31,23 +31,32 @@ jobs:
         with:
           xcode-version: '16.0'
 
-      - name: Xcode version
-        run: xcodebuild -version
-
-      - name: Install iOS 18 runtime (for storyboard + assets compilation)
+      - name: Xcode version + disk check
         run: |
-          sudo xcodebuild -downloadPlatform iOS 2>&1 || true
-          # Also ensure iOS 18.0 simulator runtime is present (actool needs it)
-          xcrun simctl runtime list 2>/dev/null
-          # Try installing iOS 18.0 specifically
-          sudo xcodebuild -downloadAllPlatforms 2>&1 || true
+          xcodebuild -version
+          echo "=== Disk before ==="
+          df -h /
+          echo "=== Homebrew cleanup ==="
+          brew cleanup -s 2>/dev/null || true
+          rm -rf ~/Library/Caches/Homebrew 2>/dev/null || true
+          echo "=== /tmp cleanup ==="
+          rm -rf /tmp/* 2>/dev/null || true
+          df -h /
 
-      - name: Setup Flutter
+      - name: Install ONLY iOS 18 simulator runtime
+        run: |
+          # Download the iOS 18 simulator runtime (needed by storyboard + actool)
+          sudo xcodebuild -downloadPlatform iOS 2>&1 | tail -20
+          echo "=== Disk after runtime ==="
+          df -h /
+          xcrun simctl runtime list 2>/dev/null | head -10
+
+      - name: Setup Flutter (with cache disabled to save space)
         uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.47.7
           channel: stable
-          cache: true
+          cache: false
 
       - name: Flutter dependencies
         run: flutter pub get
@@ -72,6 +81,8 @@ jobs:
       - name: xcodebuild Release iOS (unsigned)
         working-directory: ios
         run: |
+          echo "=== Disk before build ==="
+          df -h /
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
@@ -93,7 +104,6 @@ jobs:
           fi
           if [ -z "$APP_PATH" ]; then
             echo "❌ No Runner.app"
-            find ios/build -name "Runner.app" 2>/dev/null
             exit 1
           fi
           echo "✅ $APP_PATH"
