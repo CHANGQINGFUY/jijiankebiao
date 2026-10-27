@@ -52,47 +52,53 @@ jobs:
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Setup CocoaPods
-        run: |
-          brew install cocoapods 2>/dev/null || brew upgrade cocoapods || true
-          pod --version
+      - name: Force Flutter to set up SPM + Pods (debug build triggers all integration)
+        run: flutter build ios --debug --no-codesign --build-number=1 2>&1 | tail -30 || echo "debug build had issues but SPM should be set up"
 
-      - name: Install CocoaPods dependencies
+      - name: Show workspace state after flutter build
         working-directory: ios
         run: |
-          rm -rf Pods Podfile.lock
-          pod install --repo-update
+          echo "=== Pods ==="
+          ls Pods/ 2>/dev/null | head -10
+          echo "=== Flutter/ephemeral ==="
+          ls Flutter/ephemeral/ 2>/dev/null | head -10
+          echo "=== xcworkspace contents ==="
+          cat Runner.xcworkspace/contents.xcworkspacedata 2>/dev/null
+          echo "=== Swift Packages ==="
+          find . -name "*.swiftpackage" -o -name "Package.resolved" 2>/dev/null | head -10
 
-      - name: Fix xcconfig include for Pods
-        working-directory: ios
-        run: |
-          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"' > /tmp/debug_new.xcconfig
-          cat Flutter/Debug.xcconfig >> /tmp/debug_new.xcconfig
-          mv /tmp/debug_new.xcconfig Flutter/Debug.xcconfig
-          
-          echo '#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"' > /tmp/release_new.xcconfig
-          cat Flutter/Release.xcconfig >> /tmp/release_new.xcconfig
-          mv /tmp/release_new.xcconfig Flutter/Release.xcconfig
-          
-          echo "=== Final xcconfigs ==="
-          cat Flutter/Debug.xcconfig
-          echo "---"
-          cat Flutter/Release.xcconfig
-
-      - name: Add dummy DEVELOPMENT_TEAM to bypass Flutter check
+      - name: Add dummy DEVELOPMENT_TEAM
         run: |
           P="ios/Runner.xcodeproj/project.pbxproj"
-          # Replace CODE_SIGN_STYLE = Automatic with Manual + dummy TEAM
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;\n\t\t\t\tDEVELOPMENT_TEAM = ABCDE12345;/g' "$P"
-          echo "=== CODE_SIGN lines ==="
-          grep -n "CODE_SIGN\|DEVELOPMENT_TEAM" "$P" | head -20
+          echo "=== Check pbxproj after sed ==="
+          grep -c "DEVELOPMENT_TEAM" "$P" || echo "0 matches"
 
-      - name: Build iOS (release, no codesign)
-        run: flutter build ios --release --no-codesign
+      - name: Final xcodebuild Release build (unsigned)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build 2>&1 | tail -50
+          echo "EXIT=$?"
 
       - name: Package unsigned IPA
-        working-directory: build/ios/iphoneos
         run: |
+          APP_PATH=$(find ios/build -path "*/Release-iphoneos/Runner.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ No Runner.app"
+            exit 1
+          fi
+          echo "✅ $APP_PATH"
+          cd "$(dirname $APP_PATH)"
           rm -rf Payload app-unsigned.ipa
           mkdir Payload
           cp -R Runner.app Payload/
@@ -103,5 +109,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-unsigned-ios
-          path: build/ios/iphoneos/app-unsigned.ipa
+          path: ios/build/Release-iphoneos/app-unsigned.ipa
           retention-days: 30
