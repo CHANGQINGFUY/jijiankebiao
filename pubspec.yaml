@@ -13,7 +13,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   justkawal_excel_updated: ^5.0.0
   path_provider: ^2.1.6
-  shared_preferences: ^2.5.3
+  shared_preferences: 2.3.5
   webview_flutter: ^4.14.1
 
 dev_dependencies:
