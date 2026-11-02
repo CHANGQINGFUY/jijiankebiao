@@ -1,0 +1,32 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Android / iOS 本地产物
+android/.gradle/
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# 分发产物与本机数据备份（含个人课表，不提交）
+dist/
+backup/
+
+# 系统文件
+.DS_Store
+Thumbs.db

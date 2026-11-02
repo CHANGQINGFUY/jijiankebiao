@@ -1,0 +1,15 @@
+{
+  "schools": [
+    {
+      "id": "fjlzy-zfjw",
+      "name": "福建林业职业技术学院（正方教务）",
+      "homeUrl": "https://zfjw.fjlzy.com/jwglxt/xtgl/login_slogin.html",
+      "apiUrl": "",
+      "httpMethod": "POST",
+      "responseFormat": "json",
+      "enabled": true,
+      "note": "已内置登录页地址；课表接口地址与字段映射待补充后才能自动导入（可在 App 内点「添加学校」自行填写）。",
+      "fieldMap": {}
+    }
+  ]
+}
