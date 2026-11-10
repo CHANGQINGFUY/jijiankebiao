@@ -1,4 +1,3 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/schedule/week_calculator.dart';
@@ -8,6 +7,7 @@ import '../../models/period_slot.dart';
 import '../../models/semester_config.dart';
 import '../../models/user_role.dart';
 import '../../services/backup_file_service.dart';
+import '../../services/web_file_picker.dart';
 import '../../state/schedule_controller.dart';
 import '../../state/schedule_scope.dart';
 import '../academic/fjlzy_probe_page.dart'
@@ -367,17 +367,17 @@ class SettingsTab extends StatelessWidget {
     String fileName = '';
     List<int> bytes;
     try {
-      final List<PlatformFile> files = await FilePicker.pickFiles(
-        dialogTitle: '选择课表文件（.xlsx 或 .pdf）',
-        type: FileType.custom,
-        allowedExtensions: <String>['xlsx', 'pdf'],
+      final PickedWebFile? file = await WebFilePicker.pick(
+        extensions: <String>['xlsx', 'pdf'],
+        accept: '.xlsx,.pdf,'
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,'
+            'application/pdf',
       );
-      if (files.isEmpty) {
+      if (file == null) {
         return;
       }
-      final PlatformFile file = files.first;
       fileName = file.name;
-      bytes = await file.readAsBytes();
+      bytes = file.bytes;
     } catch (error) {
       messenger.showSnackBar(SnackBar(content: Text('无法打开文件选择器：$error')));
       return;

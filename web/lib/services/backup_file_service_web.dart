@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:web/web.dart' as web;
+
+import 'web_file_picker.dart';
 
 /// Web 端备份文件读写：
 /// - 导出：通过创建 Blob + 临时 <a download> 触发浏览器下载（Web 无文件系统写入权限）。
-/// - 导入：复用 file_picker 的 Web 实现（input[type=file]）读取内容。
+/// - 导入：复用网页端文件选择器（input[type=file]）读取内容。
 class BackupFileService {
   const BackupFileService._();
 
@@ -37,15 +38,13 @@ class BackupFileService {
 
   /// 打开文件选择器选择 JSON，返回文件内容；用户取消时返回 null。
   static Future<String?> pickJson() async {
-    final List<PlatformFile> files = await FilePicker.pickFiles(
-      dialogTitle: '选择课表备份 JSON',
-      type: FileType.custom,
-      allowedExtensions: <String>['json'],
+    final PickedWebFile? file = await WebFilePicker.pick(
+      extensions: <String>['json'],
+      accept: '.json,application/json',
     );
-    if (files.isEmpty) {
+    if (file == null) {
       return null;
     }
-    final Uint8List bytes = await files.first.readAsBytes();
-    return utf8.decode(bytes);
+    return utf8.decode(file.bytes);
   }
 }
