@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/schedule/course_conflict.dart';
 import '../../core/theme/course_colors.dart';
 import '../../models/course.dart';
+import '../../models/user_role.dart';
 import '../../state/schedule_controller.dart';
 import '../../state/schedule_scope.dart';
 import 'excel_import_models.dart';
@@ -541,10 +542,7 @@ class _DraftTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${course.weekdayLabel} · ${course.periodLabel} · '
-                      '${course.weeks.label}'
-                      '${course.teacher.isEmpty ? '' : ' · ${course.teacher}'}'
-                      '${course.room.isEmpty ? '' : ' · ${course.room}'}',
+                      _tileSubtitle(course),
                       style: theme.textTheme.bodySmall,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -596,4 +594,28 @@ class _DraftTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _tileSubtitle(Course course) {
+  final List<String> parts = <String>[
+    course.weekdayLabel,
+    course.periodLabel,
+    course.weeks.label,
+  ];
+  if (course.type == UserRole.teacher) {
+    if (course.className != null && course.className!.isNotEmpty) {
+      parts.add(course.className!);
+    }
+    if (course.teacher.isNotEmpty) {
+      parts.add(course.teacher);
+    }
+  } else {
+    if (course.teacher.isNotEmpty) {
+      parts.add(course.teacher);
+    }
+  }
+  if (course.room.isNotEmpty) {
+    parts.add(course.room);
+  }
+  return parts.join(' · ');
 }

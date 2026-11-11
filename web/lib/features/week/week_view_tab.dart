@@ -4,6 +4,7 @@ import '../../core/theme/course_colors.dart';
 import '../../models/course_cell.dart';
 import '../../models/new_course_request.dart';
 import '../../models/period_slot.dart';
+import '../../models/user_role.dart';
 import '../../models/weekday.dart';
 import '../../routing/app_routes.dart';
 import '../../state/schedule_controller.dart';
@@ -95,6 +96,7 @@ class _WeekGrid extends StatelessWidget {
     final Map<Weekday, Map<int, List<CourseCell>>> grid =
         controller.gridOfWeek(week);
     final List<PeriodSlot> periods = controller.periods;
+    final UserRole role = controller.role;
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
@@ -153,7 +155,7 @@ class _WeekGrid extends StatelessWidget {
                         top: _headerHeight + (slot.key - 1) * _rowHeight + 2,
                         width: dayWidth - 4,
                         height: _cellHeight(slot.value) - 4,
-                        child: _CourseCellCard(cells: slot.value),
+                        child: _CourseCellCard(cells: slot.value, role: role),
                       ),
                 ],
               ),
@@ -279,15 +281,19 @@ class _GridBackground extends StatelessWidget {
 
 /// 一个格子：可能同时有多门课占用同一节次，只展示第一门并标注数量。
 class _CourseCellCard extends StatelessWidget {
-  const _CourseCellCard({required this.cells});
+  const _CourseCellCard({required this.cells, required this.role});
 
   final List<CourseCell> cells;
+  final UserRole role;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final CourseCell cell = cells.first;
     final Color color = CourseColors.of(cell.course.colorSeed);
+    final String? subtitle = role == UserRole.teacher
+        ? (cell.course.className ?? cell.course.teacher)
+        : (cell.course.teacher.isEmpty ? null : cell.course.teacher);
 
     return Material(
       color: color.withValues(alpha: 0.16),
@@ -332,7 +338,19 @@ class _CourseCellCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 2),
+              if (subtitle != null) ...<Widget>[
+                const SizedBox(height: 1),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontSize: 9,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 1),
               Text(
                 cell.course.room,
                 maxLines: 1,

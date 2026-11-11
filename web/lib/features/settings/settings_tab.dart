@@ -10,8 +10,6 @@ import '../../services/backup_file_service.dart';
 import '../../services/web_file_picker.dart';
 import '../../state/schedule_controller.dart';
 import '../../state/schedule_scope.dart';
-import '../academic/fjlzy_probe_page.dart'
-    if (dart.library.html) '../academic/fjlzy_probe_page_web.dart';
 import '../import_excel/excel_import_models.dart';
 import '../import_excel/excel_import_page.dart';
 import '../import_excel/excel_timetable_parser.dart';
@@ -124,15 +122,8 @@ class SettingsTab extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.table_chart_outlined),
                 title: const Text('从 Excel / PDF 导入课表'),
-                subtitle: const Text('选择 .xlsx，或教务系统导出的整张课表 .pdf'),
+                subtitle: const Text('选择 .xlsx 或 .pdf 文件'),
                 onTap: () => _importExcel(context, controller),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.school_outlined),
-                title: const Text('从教务系统导入'),
-                subtitle: const Text('福建林业职业技术学院，网页登录后探测课表'),
-                onTap: () => _openAcademicImport(context),
               ),
             ],
           ),
@@ -450,15 +441,6 @@ class SettingsTab extends StatelessWidget {
         const SnackBar(content: Text('课表已导入，建议检查开学日期与节次时间。')),
       );
     }
-  }
-
-  /// 打开教务系统导入页（适配器与学校列表都在该页内完成选择）。
-  Future<void> _openAcademicImport(BuildContext context) {
-    return Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (BuildContext routeContext) => const FjlzyProbePage(),
-      ),
-    );
   }
 
   /// 展示无法解析的行，用户可选择取消或继续预览其余行。
